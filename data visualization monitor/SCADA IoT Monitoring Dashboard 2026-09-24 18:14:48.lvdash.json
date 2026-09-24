@@ -1,0 +1,1254 @@
+{
+  "datasets": [
+    {
+      "name": "bee62991",
+      "displayName": "scada_lakeflow_gold",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT * FROM workspace.gold.scada_lakeflow_gold ORDER BY reading_count DESC\n",
+        "dimensions": [
+          {
+            "name": "id",
+            "expr": "source.id"
+          },
+          {
+            "name": "unit",
+            "expr": "source.unit"
+          },
+          {
+            "name": "reading_count",
+            "expr": "source.reading_count"
+          },
+          {
+            "name": "avg_value",
+            "expr": "source.avg_value"
+          },
+          {
+            "name": "min_value",
+            "expr": "source.min_value"
+          },
+          {
+            "name": "max_value",
+            "expr": "source.max_value"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          },
+          {
+            "displayName": "Overall Average Value",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 2.0
+              }
+            },
+            "name": "weighted_avg_value",
+            "expr": "ROUND(SUM(`avg_value` * `reading_count`) / SUM(`reading_count`), 2)",
+            "comment": "Weighted average of avg_value weighted by reading_count, rounded to 2 decimal places"
+          },
+          {
+            "displayName": "Peak Sensor Value",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 2.0
+              }
+            },
+            "name": "peak_value",
+            "expr": "ROUND(MAX(`max_value`), 2)",
+            "comment": "Maximum of max_value, rounded to 2 decimal places"
+          }
+        ]
+      }
+    },
+    {
+      "name": "4bfc0dea",
+      "displayName": "scada_lakeflow_silver",
+      "config": {
+        "version": "1.1",
+        "source": "workspace.silver.scada_lakeflow_silver",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "scada_silver",
+      "displayName": "scada_lakeflow_silver",
+      "config": {
+        "version": "1.1",
+        "source": "workspace.silver.scada_lakeflow_silver",
+        "dimensions": [
+          {
+            "name": "timestamp",
+            "expr": "DATE_TRUNC('hour', source.timestamp)",
+            "displayName": "Timestamp"
+          },
+          {
+            "name": "id",
+            "expr": "source.id",
+            "displayName": "Sensor ID"
+          },
+          {
+            "name": "unit",
+            "expr": "source.unit",
+            "displayName": "Unit"
+          }
+        ],
+        "measures": [
+          {
+            "displayName": "Average Value",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 2.0
+              }
+            },
+            "name": "avg_value",
+            "expr": "AVG(value)",
+            "comment": "Average of sensor readings per hour"
+          },
+          {
+            "displayName": "Maximum Value",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 2.0
+              }
+            },
+            "name": "max_value",
+            "expr": "MAX(value)",
+            "comment": "Maximum sensor reading per hour"
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "name": "37fbddd8",
+      "displayName": "SCADA IoT Monitoring Dashboard",
+      "layout": [
+        {
+          "widget": {
+            "name": "e61bf3b3",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "measure(count)",
+                      "expression": "MEASURE(`count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Total sensor\n<p>&nbsp;</p>\n",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(count)",
+                  "displayName": "Total Count"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "700a76ec",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "sum(reading_count)",
+                      "expression": "SUM(`reading_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Total Readings",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(reading_count)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "weighted_avg_value_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "measure(weighted_avg_value)",
+                      "expression": "MEASURE(`weighted_avg_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Overall Average Value",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(weighted_avg_value)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "peak_sensor_value_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "measure(peak_value)",
+                      "expression": "MEASURE(`peak_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Peak Sensor Value",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(peak_value)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "sensor_reading_count_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "sum(reading_count)",
+                      "expression": "SUM(`reading_count`)"
+                    },
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "SUM(`reading_count`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Sensor Reading Count by Sensor ID",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "id",
+                  "displayName": "Sensor ID",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 10
+                    },
+                    "sort": {
+                      "by": "measure-reversed",
+                      "measure": {
+                        "fieldName": "sum(reading_count)"
+                      }
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(reading_count)",
+                  "displayName": "Reading Count",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true,
+                  "text": {
+                    "fieldName": "sum(reading_count)"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "avg_sensor_value_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "avg(avg_value)",
+                      "expression": "AVG(`avg_value`)"
+                    },
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "AVG(`avg_value`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Average Sensor Value by Sensor ID",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "id",
+                  "displayName": "Sensor ID",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 10
+                    },
+                    "sort": {
+                      "by": "measure-reversed",
+                      "measure": {
+                        "fieldName": "avg(avg_value)"
+                      }
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(avg_value)",
+                  "displayName": "Average Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true,
+                  "text": {
+                    "fieldName": "avg(avg_value)"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "peak_value_by_sensor_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "max(max_value)",
+                      "expression": "MAX(`max_value`)"
+                    },
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "MAX(`max_value`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Peak Value by Sensor",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "id",
+                  "displayName": "Sensor ID",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 10
+                    },
+                    "sort": {
+                      "by": "measure-reversed",
+                      "measure": {
+                        "fieldName": "max(max_value)"
+                      }
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "max(max_value)",
+                  "displayName": "Maximum Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true,
+                  "text": {
+                    "fieldName": "max(max_value)"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "minimum_sensor_values_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "min(min_value)",
+                      "expression": "MIN(`min_value`)"
+                    },
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "ASC",
+                      "expression": "MIN(`min_value`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Minimum Sensor Values",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "id",
+                  "displayName": "Sensor ID",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 10
+                    },
+                    "sort": {
+                      "by": "measure",
+                      "measure": {
+                        "fieldName": "min(min_value)"
+                      }
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "min(min_value)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 2
+                    }
+                  },
+                  "displayName": "Minimum Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true,
+                  "text": {
+                    "fieldName": "min(min_value)",
+                    "format": {
+                      "type": "number-plain",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 2
+                      }
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 7,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "sensor_value_range_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    },
+                    {
+                      "name": "min(min_value)",
+                      "expression": "MIN(`min_value`)"
+                    },
+                    {
+                      "name": "avg(avg_value)",
+                      "expression": "AVG(`avg_value`)"
+                    },
+                    {
+                      "name": "max(max_value)",
+                      "expression": "MAX(`max_value`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "MAX(`max_value`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Sensor Value Range",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "id",
+                  "displayName": "Sensor ID",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 10
+                    },
+                    "sort": {
+                      "by": "measure-reversed",
+                      "measure": {
+                        "fieldName": "max(max_value)"
+                      }
+                    }
+                  }
+                },
+                "y": {
+                  "fields": [
+                    {
+                      "fieldName": "min(min_value)",
+                      "displayName": "Minimum Value"
+                    },
+                    {
+                      "fieldName": "avg(avg_value)",
+                      "displayName": "Average Value"
+                    },
+                    {
+                      "fieldName": "max(max_value)",
+                      "displayName": "Maximum Value"
+                    }
+                  ],
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "sensor_performance_summary_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    },
+                    {
+                      "name": "unit",
+                      "expression": "`unit`"
+                    },
+                    {
+                      "name": "reading_count",
+                      "expression": "`reading_count`"
+                    },
+                    {
+                      "name": "avg_value",
+                      "expression": "`avg_value`"
+                    },
+                    {
+                      "name": "min_value",
+                      "expression": "`min_value`"
+                    },
+                    {
+                      "name": "max_value",
+                      "expression": "`max_value`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Sensor Performance Summary",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "id",
+                    "displayName": "ID"
+                  },
+                  {
+                    "fieldName": "unit",
+                    "displayName": "Unit"
+                  },
+                  {
+                    "fieldName": "reading_count",
+                    "displayName": "Reading Count"
+                  },
+                  {
+                    "fieldName": "avg_value",
+                    "format": {
+                      "type": "number-plain",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 2
+                      }
+                    },
+                    "displayName": "Average Value"
+                  },
+                  {
+                    "fieldName": "min_value",
+                    "format": {
+                      "type": "number-plain",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 2
+                      }
+                    },
+                    "displayName": "Minimum Value"
+                  },
+                  {
+                    "fieldName": "max_value",
+                    "format": {
+                      "type": "number-plain",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 2
+                      }
+                    },
+                    "displayName": "Maximum Value"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 12,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "sensor-id",
+            "queries": [
+              {
+                "name": "dashboards/01f1b815bb3b1c7ba00ca8859088ab6c/datasets/01f1b823b6c91c6381f6259aa92d2697_id",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    },
+                    {
+                      "name": "id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f1b815bb3b1c7ba00ca8859088ab6c/datasets/01f1b8304da01948bf118c944d4b44df_id",
+                "query": {
+                  "datasetName": "scada_silver",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    },
+                    {
+                      "name": "id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Sensor ID",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "id",
+                    "queryName": "dashboards/01f1b815bb3b1c7ba00ca8859088ab6c/datasets/01f1b823b6c91c6381f6259aa92d2697_id"
+                  },
+                  {
+                    "fieldName": "id",
+                    "queryName": "dashboards/01f1b815bb3b1c7ba00ca8859088ab6c/datasets/01f1b8304da01948bf118c944d4b44df_id"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 26,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "measurement-unit-filter",
+            "queries": [
+              {
+                "name": "dashboards/01f1b815bb3b1c7ba00ca8859088ab6c/datasets/01f1b823b6c91c6381f6259aa92d2697_unit",
+                "query": {
+                  "datasetName": "bee62991",
+                  "fields": [
+                    {
+                      "name": "unit",
+                      "expression": "`unit`"
+                    },
+                    {
+                      "name": "unit_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Measurement Unit",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "unit",
+                    "queryName": "dashboards/01f1b815bb3b1c7ba00ca8859088ab6c/datasets/01f1b823b6c91c6381f6259aa92d2697_unit"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 26,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "sensor_reading_trend_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "scada_silver",
+                  "fields": [
+                    {
+                      "name": "timestamp",
+                      "expression": "`timestamp`"
+                    },
+                    {
+                      "name": "measure(avg_value)",
+                      "expression": "MEASURE(`avg_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Sensor Reading Trend Over Time",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "timestamp",
+                  "displayName": "Timestamp",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(avg_value)",
+                  "displayName": "Average Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 28,
+            "width": 12,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "peak_sensor_reading_trend_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "scada_silver",
+                  "fields": [
+                    {
+                      "name": "timestamp",
+                      "expression": "`timestamp`"
+                    },
+                    {
+                      "name": "measure(max_value)",
+                      "expression": "MEASURE(`max_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Peak Sensor Reading Over Time",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "timestamp",
+                  "displayName": "Timestamp",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(max_value)",
+                  "displayName": "Maximum Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 35,
+            "width": 12,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "sensor_comparison_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "scada_silver",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    },
+                    {
+                      "name": "timestamp",
+                      "expression": "`timestamp`"
+                    },
+                    {
+                      "name": "measure(avg_value)",
+                      "expression": "MEASURE(`avg_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Sensor Comparison Over Time",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "timestamp",
+                  "displayName": "Timestamp",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(avg_value)",
+                  "displayName": "Average Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "id",
+                  "displayName": "Sensor ID",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 44,
+            "width": 12,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "sensor_comparison_filter",
+            "queries": [
+              {
+                "name": "dashboards/01f1b815bb3b1c7ba00ca8859088ab6c/datasets/01f1b8304da01948bf118c944d4b44df_id",
+                "query": {
+                  "datasetName": "scada_silver",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    },
+                    {
+                      "name": "id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Select Sensors to Compare",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "id",
+                    "queryName": "dashboards/01f1b815bb3b1c7ba00ca8859088ab6c/datasets/01f1b8304da01948bf118c944d4b44df_id"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 42,
+            "width": 12,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
