@@ -1,16 +1,20 @@
 """
 Tools module for the MCP server.
 
-This module defines all the tools (functions) that the MCP server exposes to clients.
-Tools are the core functionality of an MCP server - they are callable functions that
-AI assistants and other clients can invoke to perform specific actions.
+This module defines all the tools that the MCP server exposes to clients.
 
-Each tool should:
-- Have a clear, descriptive name
-- Include comprehensive docstrings (used by AI to understand when to call the tool)
-- Return structured data (typically dict or list)
-- Handle errors gracefully
+Current tools:
+- health
+- get_current_user
+- get_sensor_summary
 """
+
+import os
+
+from databricks.sdk.service.sql import (
+    StatementParameterListItem,
+    StatementState,
+)
 
 from server import utils
 
@@ -19,93 +23,237 @@ def load_tools(mcp_server):
     """
     Register all MCP tools with the server.
 
-    This function is called during server initialization to register all available
-    tools with the MCP server instance. Tools are registered using the @mcp_server.tool
-    decorator, which makes them available to clients via the MCP protocol.
-
     Args:
-        mcp_server: The FastMCP server instance to register tools with. This is the
-                   main server object that handles tool registration and routing.
-
-    Example:
-        To add a new tool, define it within this function using the decorator:
-
-        @mcp_server.tool
-        def my_new_tool(param: str) -> dict:
-            '''Description of what the tool does.'''
-            return {"result": f"Processed {param}"}
+        mcp_server: FastMCP server instance.
     """
+
+    # ============================================================
+    # TOOL 1: MCP SERVER HEALTH CHECK
+    # ============================================================
 
     @mcp_server.tool
     def health() -> dict:
         """
         Check the health of the MCP server and Databricks connection.
 
-        This is a simple diagnostic tool that confirms the server is running properly.
-        It's useful for:
-        - Monitoring and health checks
-        - Testing the MCP connection
-        - Verifying the server is responsive
-
         Returns:
-            dict: A dictionary containing:
-                - status (str): The health status ("healthy" if operational)
-                - message (str): A human-readable status message
-
-        Example response:
-            {
-                "status": "healthy",
-                "message": "Custom MCP Server is healthy and connected to Databricks Apps."
-            }
+            dict containing the MCP server health status.
         """
+
         return {
             "status": "healthy",
-            "message": "Custom MCP Server is healthy and connected to Databricks Apps.",
+            "message": (
+                "Custom MCP Server is healthy and connected "
+                "to Databricks Apps."
+            ),
         }
+
+    # ============================================================
+    # TOOL 2: CURRENT AUTHENTICATED USER
+    # ============================================================
 
     @mcp_server.tool
     def get_current_user() -> dict:
         """
         Get information about the current authenticated user.
 
-        This tool retrieves details about the user who is currently authenticated
-        with the MCP server. When deployed as a Databricks App, this returns
-        information about the end user making the request. When running locally,
-        it returns information about the developer's Databricks identity.
-
-        Useful for:
-        - Personalizing responses based on the user
-        - Authorization checks
-        - Audit logging
-        - User-specific operations
-
         Returns:
-            dict: A dictionary containing:
-                - display_name (str): The user's display name
-                - user_name (str): The user's username/email
-                - active (bool): Whether the user account is active
-
-        Example response:
-            {
-                "display_name": "John Doe",
-                "user_name": "john.doe@example.com",
-                "active": true
-            }
-
-        Raises:
-            Returns error dict if authentication fails or user info cannot be retrieved.
+            dict containing:
+            - display_name
+            - user_name
+            - active
         """
+
         try:
             w = utils.get_user_authenticated_workspace_client()
+
             user = w.current_user.me()
+
             return {
                 "display_name": user.display_name,
                 "user_name": user.user_name,
                 "active": user.active,
             }
-        except Exception as e:
-            return {"error": str(e), "message": "Failed to retrieve user information"}
 
-    """
-    TODO: Add more tools as necessary
-    """
+        except Exception as e:
+            return {
+                "error": str(e),
+                "message": "Failed to retrieve user information",
+            }
+
+    # ============================================================
+    # TOOL 3: SCADA SENSOR SUMMARY
+    # ============================================================
+
+    @mcp_server.tool
+    def get_sensor_summary(sensor_id: int) -> dict:
+        """
+        Retrieve aggregated analytics for a specific SCADA sensor.
+
+        Use this tool when a user asks about:
+        - total readings for a sensor
+        - average sensor value
+        - minimum sensor value
+        - maximum sensor value
+        - measurement unit
+        - general sensor summary
+
+        Data source:
+            workspace.gold.scada_lakeflow_gold
+
+        Args:
+            sensor_id:
+                SCADA sensor identifier.
+
+        Returns:
+            dict containing:
+            - sensor_id
+            - unit
+            - reading_count
+            - avg_value
+            - min_value
+            - max_value
+        """
+
+        try:
+            # ----------------------------------------------------
+            # Get SQL Warehouse ID from Databricks App resource
+            # ----------------------------------------------------
+
+            warehouse_id = os.getenv("WAREHOUSE_ID")
+
+            if not warehouse_id:
+                return {
+                    "error": "WAREHOUSE_ID is not configured",
+                    "sensor_id": sensor_id,
+                    "message": (
+                        "The SQL Warehouse resource is not available "
+                        "to the MCP application."
+                    ),
+                }
+
+            # ----------------------------------------------------
+            # Get user-authenticated Databricks client
+            # ----------------------------------------------------
+
+            w = utils.get_user_authenticated_workspace_client()
+
+            # ----------------------------------------------------
+            # Execute parameterized SQL query
+            # ----------------------------------------------------
+
+            response = w.statement_execution.execute_statement(
+                warehouse_id=warehouse_id,
+                statement="""
+                    SELECT
+                        id,
+                        unit,
+                        reading_count,
+                        avg_value,
+                        min_value,
+                        max_value
+                    FROM workspace.gold.scada_lakeflow_gold
+                    WHERE id = :sensor_id
+                    LIMIT 1
+                """,
+                parameters=[
+                    StatementParameterListItem(
+                        name="sensor_id",
+                        value=str(sensor_id),
+                        type="INT",
+                    )
+                ],
+                wait_timeout="50s",
+            )
+
+            # ----------------------------------------------------
+            # Check SQL execution status
+            # ----------------------------------------------------
+
+            if response.status is None:
+                return {
+                    "error": "SQL statement returned no status",
+                    "sensor_id": sensor_id,
+                }
+
+            if response.status.state != StatementState.SUCCEEDED:
+                state = (
+                    response.status.state.value
+                    if response.status.state
+                    else "UNKNOWN"
+                )
+
+                error_message = "SQL query did not complete successfully."
+
+                if response.status.error:
+                    error_message = response.status.error.message
+
+                return {
+                    "error": error_message,
+                    "state": state,
+                    "sensor_id": sensor_id,
+                }
+
+            # ----------------------------------------------------
+            # Extract SQL result
+            # ----------------------------------------------------
+
+            if response.result is None:
+                return {
+                    "found": False,
+                    "sensor_id": sensor_id,
+                    "message": "SQL query returned no result.",
+                }
+
+            rows = response.result.data_array
+
+            if not rows:
+                return {
+                    "found": False,
+                    "sensor_id": sensor_id,
+                    "message": (
+                        "Sensor was not found in the Gold "
+                        "SCADA analytics table."
+                    ),
+                }
+
+            row = rows[0]
+
+            # ----------------------------------------------------
+            # Return structured MCP response
+            # ----------------------------------------------------
+
+            return {
+                "found": True,
+                "sensor_id": int(row[0]),
+                "unit": row[1],
+                "reading_count": (
+                    int(row[2])
+                    if row[2] is not None
+                    else None
+                ),
+                "avg_value": (
+                    float(row[3])
+                    if row[3] is not None
+                    else None
+                ),
+                "min_value": (
+                    float(row[4])
+                    if row[4] is not None
+                    else None
+                ),
+                "max_value": (
+                    float(row[5])
+                    if row[5] is not None
+                    else None
+                ),
+            }
+
+        except Exception as e:
+            return {
+                "error": str(e),
+                "sensor_id": sensor_id,
+                "message": (
+                    "Failed to retrieve SCADA sensor summary."
+                ),
+            }
